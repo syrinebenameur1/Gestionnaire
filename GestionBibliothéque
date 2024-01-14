@@ -1,0 +1,346 @@
+#include <stdio.h>
+#include <windows.h>
+
+#define CMAX 300
+#define LIVRE_MAX 200
+#define ETUDIANT_MAX 100
+
+typedef struct Livre {
+	int Code_livre;
+	char Titre[CMAX];
+	char Nom_Etudiant[CMAX];
+	int Disponible;
+} Livre;
+
+/*typedef struct Etudiant {
+	char Nom[CMAX];
+	char Prenom[CMAX];
+} Etudiant;   */
+
+
+Livre livres[LIVRE_MAX];
+
+
+
+int nbLivres = 0;
+int nbEtudiants = 0;
+
+void sauvegarderLivres() {
+	FILE *file = fopen("bibliotheque.txt", "w");
+	// s'assurer que le programme ne continue pas à fonctionner avec un fichier qui n'a pas pu être ouvert avec succès.
+	// C'est une bonne pratique pour éviter des erreurs inattendues dans le programme
+
+	if (file == NULL) {
+		printf("Erreur lors de l'ouverture du fichier pour sauvegarde.\n");
+		return;
+	}
+
+	for (int i = 0; i <= nbLivres; i++) {
+		if (livres[i].Disponible) {
+			fprintf(file, "%d %s %d\n", livres[i].Code_livre, livres[i].Titre, livres[i].Disponible);
+		} else {
+			fprintf(file, "%d %s  %s %d\n", livres[i].Code_livre, livres[i].Titre, livres[i].Nom_Etudiant, livres[i].Disponible);
+		}
+	}
+
+	fclose(file);
+}
+
+void sauvegarderEmprunts() {
+	FILE *file = fopen("emprunts.txt", "w");
+
+	if (file == NULL) {
+		printf("Erreur lors de l'ouverture du fichier pour sauvegarde des emprunts.\n");
+		return;
+	}
+
+	for (int i = 0; i < nbLivres; i++) {
+		if (!livres[i].Disponible) {
+			fprintf(file, "%s %s \n", livres[i].Nom_Etudiant, livres[i].Titre);
+		}
+	}
+
+	fclose(file);
+}
+
+void chargerLivres() {
+	FILE *file = fopen("bibliotheque.txt", "r");
+
+	if (file == NULL) {
+		printf("Aucun fichier de bibliotheque trouve.\n");
+		return;
+	}
+
+	while (fscanf(file, "%d %s %s %d", &livres[nbLivres].Code_livre, livres[nbLivres].Titre, livres[nbLivres].Nom_Etudiant, &livres[nbLivres].Disponible) == 4) {
+		nbLivres++;
+		if (nbLivres >= LIVRE_MAX) {
+			printf("Nombre maximum de livres atteint.\n");
+			break;
+		}
+	}
+
+	fclose(file);
+}
+
+void chargerEmprunts() {
+	FILE *file = fopen("emprunts.txt", "r");
+
+	if (file == NULL) {
+		printf("Aucun fichier d'emprunts trouve.\n");
+		return;
+	}
+
+	while (fscanf(file, "%s %s %s", livres[nbLivres].Nom_Etudiant, livres[nbLivres].Titre) == 2 ){
+		nbLivres++;
+		if (nbLivres >= LIVRE_MAX) {
+			printf("Nombre maximum d'emprunts atteint.\n");
+			break;
+		}
+	}
+
+	fclose(file);
+}
+
+void afficherLivres() {
+	printf("\nListe des livres :\n");
+	if (nbLivres==0) {
+		printf("Il n'ya 0 livres\n");
+	}
+	for (int i = 0; i < nbLivres; i++) {
+		printf("Code livre : %d\n", livres[i].Code_livre);
+		printf("Titre : %s\n", livres[i].Titre);
+
+		if (livres[i].Disponible) {
+			printf("Disponibilite : Disponible\n");
+		} else {
+			printf("Ce livre a ete emprunte par :  %s\n", livres[i].Nom_Etudiant);
+			printf("Disponibilite : non disponible\n");
+		}
+
+		printf("----------------------------\n");
+	}
+}
+
+void ajouterLivre() {
+	if (nbLivres >= LIVRE_MAX) {
+		printf("Nombre maximum de livres atteint.\n");
+		return;
+	}
+
+	Livre livre;
+	printf("Code Livre : ");
+	scanf("%d", &livre.Code_livre);
+
+	for (int i = 0; i < nbLivres; i++) {
+		if (livres[i].Code_livre == livre.Code_livre) {
+			printf("Un livre avec ce code existe deja.\n");
+			return;
+		}
+	}
+
+	printf("Titre : ");
+	scanf("%s", livre.Titre);
+
+	livre.Disponible = 1;
+
+	livres[nbLivres++] = livre;
+	sauvegarderLivres();
+	printf("Livre ajoute avec succes.\n");
+}
+
+void supprimerLivre() {
+	int code;
+	printf("Code Livre a supprimer : ");
+	scanf("%d", &code);
+
+	int codeTrouve = -1;
+
+	for (int i = 0; i < nbLivres; i++) {
+		if (livres[i].Code_livre == code) {
+			codeTrouve = i;
+			break;
+		}
+	}
+
+	if (codeTrouve != -1) {
+		for (int i = codeTrouve; i < nbLivres - 1; i++) {
+			livres[i] = livres[i + 1];
+		}
+		nbLivres--;
+
+		sauvegarderLivres();
+		printf("Livre supprime avec succes.\n");
+	} else {
+		printf("Livre non trouve.\n");
+	}
+}
+
+void prendreLivre() {
+int code;
+printf("Code Livre a prendre pour emprunter : ");
+
+// Vérifier si la saisie est un entier
+if (scanf("%d", &code) != 1) {
+    // La saisie n'est pas un entier
+    printf("Erreur : Veuillez entrer un code de livre valide (entier).\n");
+    return;
+}
+
+	int foundIndex = -1;
+
+	for (int i = 0; i < nbLivres; i++) {
+		if (livres[i].Code_livre == code) {
+			foundIndex = i;
+			break;
+		}
+	}
+
+	if (foundIndex != -1) {
+		if (livres[foundIndex].Disponible) {
+			printf("Nom de l'etudiant qui prend le livre : ");
+			scanf("%s", livres[foundIndex].Nom_Etudiant);
+
+			livres[foundIndex].Disponible = 0;
+			sauvegarderLivres();
+			sauvegarderEmprunts();
+			printf("Livre emprunte avec succes.\n");
+		} else {
+			printf("Le livre n'est pas disponible.\n");
+		}
+	} else {
+		printf("Livre non trouve.\n");
+	}
+}
+
+void retournerLivre() {
+	int code;
+	printf("Code Livre a retourner : ");
+	scanf("%d", &code);
+
+	int foundIndex = -1;
+
+	for (int i = 0; i < nbLivres; i++) {
+		if (livres[i].Code_livre == code) {
+			foundIndex = i;
+			break;
+		}
+	}
+
+	if (foundIndex != -1) {
+		if (!livres[foundIndex].Disponible) {
+			livres[foundIndex].Disponible = 1;
+			printf("Livre retourne avec succes.\n");
+			sauvegarderLivres();
+			sauvegarderEmprunts();
+		} else {
+			printf("Le livre n'est pas emprunte.\n");
+		}
+	} else {
+		printf("Livre non trouve.\n");
+	}
+}
+
+void rechercherLivre(const char *titre) {  //manipulation directe sans l'intermediaire d'une variable
+    printf("\nResultats de la recherche pour le titre '%s':\n", titre);
+
+    int trouve = 0;
+    for (int i = 0; i < nbLivres; i++) {
+        // Comparaison sans distinguer la casse
+        if (strcasecmp(livres[i].Titre, titre) == 0) {  //strcasecmp compare deux chaînes sans tenir compte si'il sont miniscule ou majuscule = 0 9ad9ad
+            printf("Code livre : %d\n", livres[i].Code_livre);
+            printf("Titre : %s\n", livres[i].Titre);
+
+            if (livres[i].Disponible) {
+                printf("Disponibilite : Disponible\n");
+            } else {
+                printf("Ce livre a ete emprunte par :  %s\n", livres[i].Nom_Etudiant);
+                printf("Disponibilite : non disponible\n");
+            }
+
+            printf("----------------------------\n");
+
+            trouve = 1;
+        }
+    }
+
+    if (!trouve) {
+        printf("Aucun livre trouve avec le titre '%s'.\n", titre);
+    }
+}
+
+
+
+void menuBibliotheque() {
+	int choix;
+	// La fonction GetStdHandle retourne un HANDLE, qui est un type de données générique utilisé pour représenter différents types de ressources système sous Window
+	//hConsole sera utilisé pour faire référence à la sortie standard de la console.
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+// 10 correspond à la couleur verte
+
+
+
+	do {
+		SetConsoleTextAttribute(hConsole, 10); // Vert
+		printf("********** Systeme de Gestion de Bibliotheque **********\n");
+
+		SetConsoleTextAttribute(hConsole, 7); // Couleur par défaut
+		printf("1. Afficher les livres\n");
+		SetConsoleTextAttribute(hConsole, 11); // Cyan clair
+		printf("2. Ajouter un livre\n");
+		SetConsoleTextAttribute(hConsole, 12); // Rouge
+		printf("3. Supprimer un livre\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		printf("4. Prendre un livre\n");
+		SetConsoleTextAttribute(hConsole, 9); // Bleu
+		printf("5. Retourner un livre\n");
+		SetConsoleTextAttribute(hConsole, 13); // Magenta
+		printf("6. Rechercher un livre par titre\n");
+		SetConsoleTextAttribute(hConsole, 14); // Jaune
+		printf("7. Quitter\n");
+
+		SetConsoleTextAttribute(hConsole, 7); // Couleur par défaut
+		printf("***********************************************\n");
+		printf("Choisir le menu : ");
+		int choix;
+		scanf("%d", &choix);
+
+
+		switch (choix) {
+			case 1:
+				afficherLivres();
+				break;
+			case 2:
+				ajouterLivre();
+				break;
+			case 3:
+				supprimerLivre();
+				break;
+			case 4:
+				prendreLivre();
+				break;
+			case 5:
+				retournerLivre();
+				break;
+			case 6: {
+				char titreRecherche[CMAX];
+				printf("Entrez le titre du livre a chercher: ");
+				scanf("%s", titreRecherche);
+				rechercherLivre(titreRecherche);
+				break;
+			}
+			case 7:
+			    printf ("Merci d'avoir utilisee notre petite application.Au revoir ! \n");
+				return;
+			default:
+				printf("Choix invalide. Veuillez entrer un nombre entre 1 et 7.\n");
+		}
+	} while (choix != 7);
+}
+
+int main() {
+	chargerLivres();
+	chargerEmprunts();
+	menuBibliotheque();
+	return 0;
+}
